@@ -60,6 +60,9 @@ async def back(callback: CallbackQuery):
 
 # ========= CREATE =========
 
+if message.from_user.id not in user_states:
+    return
+    
 @dp.callback_query(F.data == "create")
 async def create_start(callback: CallbackQuery):
     user_states[callback.from_user.id] = {"step": "text"}
@@ -92,38 +95,43 @@ async def process(message: Message):
         await message.answer("🏆 Кол-во победителей:")
 
     elif step == "winners":
-        state["winners"] = int(message.text)
+    if not message.text.isdigit():
+        await message.answer("❌ Введи число!")
+        return
 
-        g_id = str(len(giveaways) + 1)
-        giveaways[g_id] = {
-            "text": state["text"],
-            "conditions": state["conditions"],
-            "subs": state["subs"],
-            "winners": state["winners"],
-            "participants": set(),
-            "active": True
-        }
+    state["winners"] = int(message.text)
 
-        text = (
-            f"🎁 {state['text']}\n\n"
-            f"📋 {state['conditions']}\n\n"
-            f"🔔 Подписки:\n" + "\n".join(state["subs"])
-        )
+    g_id = str(len(giveaways) + 1)
+    giveaways[g_id] = {
+        "text": state["text"],
+        "conditions": state["conditions"],
+        "subs": state["subs"],
+        "winners": state["winners"],
+        "participants": set(),
+        "active": True
+    }
 
-        msg = await bot.send_message(
-            CHANNEL_ID,
-            text,
-            reply_markup=participate_kb(g_id)
-        )
+    text = (
+        f"🎁 {state['text']}\n\n"
+        f"📋 {state['conditions']}\n\n"
+        f"🔔 Подписки:\n" + "\n".join(state["subs"])
+    )
 
-        giveaways[g_id]["message_id"] = msg.message_id
+    msg = await bot.send_message(
+        CHANNEL_ID,
+        text,
+        reply_markup=participate_kb(g_id)
+    )
 
-        await message.answer(
-            f"✅ Розыгрыш #{g_id} создан",
-            reply_markup=manage_kb(g_id)
-        )
+    giveaways[g_id]["message_id"] = msg.message_id
 
-        user_states.pop(message.from_user.id)
+    await message.answer(
+        f"✅ Розыгрыш #{g_id} создан",
+        reply_markup=manage_kb(g_id)
+    )
+
+    # ❗ ВАЖНО: сбрасываем состояние
+    user_states.pop(message.from_user.id, None)
 
 # ========= LIST =========
 
